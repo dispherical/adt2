@@ -1,7 +1,6 @@
 require('dotenv').config()
 const express = require('express')
 const app = express()
-const port = 3000
 const { App } = require('@slack/bolt');
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -12,6 +11,9 @@ const slackApp = new App({
   appToken: process.env.SLACK_APP_TOKEN,
   socketMode: true
 });
+app.get('/', (req, res) => {
+  res.redirect(`https://github.com/dispherical/adt2`)
+})
 app.get('/authorize', (req, res) => {
   res.redirect(`https://slack.com/oauth/v2/authorize?scope=groups:write&client_id=${process.env.SLACK_CLIENT_ID}&redirect_uri=https://adt.david.hackclub.app:3000/callback`)
 })
@@ -51,6 +53,6 @@ app.get('/callback', async (req, res) => {
   res.send("Oauth2 flow successful. You can use ADT on channels you manage now.")
 })
 
-app.listen(port, () => {
+app.listen(process.env.PORT || 3000, () => {
   console.log(`Example app listening on port ${port}`)
 })

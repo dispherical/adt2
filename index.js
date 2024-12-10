@@ -39,7 +39,7 @@ app.command('/disarm', async ({ ack, command, respond, say, body }) => {
             id: command.channel_id
         }
     })
-    if (!armedRecord) return await respond(`ADT has already been disarmed`)
+    if (!armedRecord) return await respond(`:x: ADT has already been disarmed`)
     await prisma.channel.delete({
         where: {
             id: command.channel_id,
@@ -52,10 +52,21 @@ app.command('/protect', async ({ ack, command, respond, say, body }) => {
     await ack();
     const isChannelManager = (await cm(command.channel_id)).includes(command.user_id)
     if (!isChannelManager) return await respond(":x: You'll need to be a channel manager to protect someone");
-    const protections = command.text.match(/\bU[A-Z0-9]{8,15}\b/)
-    if (!protections) return await respond(":x: No user ID(s) found. You can use multiple pings or mutiple IDs");
-
-    protections.map(async id => {
+    const channel = await app.client.conversations.info({
+        channel: command.channel_id
+    })
+    if (!channel.channel.is_private) return await respond(":x: Only private channels can have protected users.");
+    const authorization = await prisma.authorization.findFirst({
+        where: {
+            id: command.user_id
+        }
+    })
+    if (!authorization) return await respond(":x: You'll need to authorize ADT. See: https://adt.david.hackclub.app/authorize");
+    const protections = command.text.match(/\bU[A-Z0-9]{8,15}\b/gm)
+    console.log(protections)
+    if (!protections) return await respond(":x: No user ID(s) found. You can use multiple pings or mutiple IDs.");
+    var status = []
+    await Promise.all(protections.map(async id => {
         const existingProtection = await prisma.protection.findFirst({
             where: {
                 userId: id,
@@ -63,7 +74,8 @@ app.command('/protect', async ({ ack, command, respond, say, body }) => {
             }
         })
         if (!existingProtection) {
-            await prisma.protection.createMany({
+            status.push(`- ✅ <@${id}> protected\n`)
+            await prisma.protection.create({
                 data: {
                     id: Math.random().toString(32).slice(2),
                     userId: id,
@@ -72,14 +84,15 @@ app.command('/protect', async ({ ack, command, respond, say, body }) => {
                 }
             })
         } else {
+            status.push(`- :x: <@${id}> unprotected\n`)
             await prisma.protection.delete({
                 where: {
                     id: existingProtection.id
                 }
             })
         }
-    })
-    await respond(`✅ Updated the status of ${protections.length} user(s).`);
+    }))
+    await respond(`✅ Updated the status of ${protections.length} user(s):\n${status.join("\n")}`);
 })
 app.command('/arm', async ({ ack, command, respond, say, body }) => {
     await ack();
@@ -95,7 +108,7 @@ app.command('/arm', async ({ ack, command, respond, say, body }) => {
             id: command.user_id
         }
     })
-    if (!authorization) return await respond(":x: You'll need to authorize ADT.");
+    if (!authorization) return await respond(":x: You'll need to authorize ADT. See: https://adt.david.hackclub.app/authorize");
     const armedRecord = await prisma.channel.findFirst({
         where: {
             id: command.channel_id
@@ -128,7 +141,7 @@ app.event("member_left_channel", async ({ event, body }) => {
             channel: event.channel,
             text: `You currently have protection. As a result, you were added back to the channel.`
         })
-    } catch (e) { 
+    } catch (e) {
 
     }
 
