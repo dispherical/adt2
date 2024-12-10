@@ -1,0 +1,13 @@
+{
+  "name": "adt2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.0.1",
+    "@slack/bolt": "^4.1.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "prisma": "^6.0.1"
+  }
+}
