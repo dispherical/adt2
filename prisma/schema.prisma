@@ -18,6 +18,7 @@ model Channel {
     id        String   @id @unique
     createdAt DateTime @default(now())
     armedBy   String
+    snitch    Boolean @default(false)
 }
 
 model Protection {

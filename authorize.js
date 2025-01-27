@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
   res.redirect(`https://github.com/dispherical/adt2`)
 })
 app.get('/authorize', (req, res) => {
-  res.redirect(`https://slack.com/oauth/v2/authorize?scope=groups:write&client_id=${process.env.SLACK_CLIENT_ID}&redirect_uri=https://adt.david.hackclub.app:3000/callback`)
+  res.redirect(`https://slack.com/oauth/v2/authorize?scope=groups:write&client_id=${process.env.SLACK_CLIENT_ID}&redirect_uri=https://adt.david.hackclub.app/callback`)
 })
 app.get('/callback', async (req, res) => {
   const { code } = req.query;
@@ -26,7 +26,7 @@ app.get('/callback', async (req, res) => {
     client_id: process.env.SLACK_CLIENT_ID,
     client_secret: process.env.SLACK_CLIENT_SECRET,
     grant_type: "authorization_code",
-    redirect_uri: host
+    redirect_uri: "https://adt.david.hackclub.app/callback"
   })
   const authRecord = await prisma.authorization.findFirst({
     where: {
@@ -54,5 +54,5 @@ app.get('/callback', async (req, res) => {
 })
 
 app.listen(process.env.PORT || 3000, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`Example app listening on port something`)
 })

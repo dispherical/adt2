@@ -11,8 +11,6 @@ const app = new App({
 });
 app.command('/adtstatus', async ({ ack, command, respond, say, body }) => {
     await ack();
-    const isChannelManager = (await cm(command.channel_id)).includes(command.user_id)
-    if (!isChannelManager) return await respond(":x: You'll need to be a channel manager to arm this channel.");
 
     const armedRecord = await prisma.channel.findFirst({
         where: {
@@ -26,7 +24,7 @@ app.command('/adtstatus', async ({ ack, command, respond, say, body }) => {
     })
     if (!armedRecord) return await respond(`:x: :shield: ADT is not armed in this channel. Users protected (${protections.length}): ${protections.map(user => `<@${user.userId}> (by <@${user.protectedBy}>)`).join(", ")}`);
 
-    await respond(`:shield: ADT has been armed in this channel by <@${armedRecord.armedBy}>. Users protected (${protections.length}): ${protections.map(user => `<@${user.userId}> (by <@${user.protectedBy}>)`).join(", ")}`)
+    await respond(`:shield: ADT has been armed in this channel by <@${armedRecord.armedBy}>. Users protected (${protections.length}): ${protections.map(user => `<@${user.userId}> (by <@${user.protectedBy}>)`).join(", ")}\n${armedRecord.snitch ? "Snitch is on." : ""}`)
 
 })
 app.command('/disarm', async ({ ack, command, respond, say, body }) => {
@@ -94,6 +92,43 @@ app.command('/protect', async ({ ack, command, respond, say, body }) => {
     }))
     await respond(`✅ Updated the status of ${protections.length} user(s):\n${status.join("\n")}`);
 })
+app.command('/snitch', async ({ ack, command, respond, say, body }) => {
+    await ack();
+    const isChannelManager = (await cm(command.channel_id)).includes(command.user_id)
+    if (!isChannelManager) return await respond(":x: You'll need to be a channel manager to arm this channel.");
+
+    const channel = await app.client.conversations.info({
+        channel: command.channel_id
+    })
+    if (!channel.channel.is_private) return await respond(":x: Only private channels can be snitched.")
+    const authorization = await prisma.authorization.findFirst({
+        where: {
+            id: command.user_id
+        }
+    })
+    if (!authorization) return await respond(":x: You'll need to authorize ADT. See: https://adt.david.hackclub.app/authorize");
+    const armedRecord = await prisma.channel.findFirst({
+        where: {
+            id: command.channel_id
+        }
+    })
+    if (armedRecord && !armedRecord.snitch) {
+        await prisma.channel.update({
+            where: {
+                id: armedRecord.id
+            },
+            data: {
+                id: armedRecord.id
+            },
+            data: {
+                snitch: false
+            }
+        })
+        await respond(":shield: :lying_face: Snitch has been deactivated.")
+    } else {
+        return await respond(":x: ADT has not been armed. Do that first.")
+    }
+});
 app.command('/arm', async ({ ack, command, respond, say, body }) => {
     await ack();
     const isChannelManager = (await cm(command.channel_id)).includes(command.user_id)
@@ -165,6 +200,12 @@ app.event("member_joined_channel", async ({ event, body }) => {
             id: armedRecord.armedBy
         }
     })
+    if (armedRecord.snitch) {
+        await app.client.chat.postMessage({
+            channel: event.channel,
+            text: `:siren-real: <@${event.inviter}> attempted to add <@${event.user}> to the channel.`
+        })
+    }
     if (!authorization) return;
     try {
         await app.client.conversations.kick({
